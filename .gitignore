@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+*.swp
+*~
+
+# Build artifacts
+build/
+*.app/
+*.zip
+*.dmg
+
+# Xcode / SPM (if any)
+.build/
+*.xcodeproj/
+DerivedData/
