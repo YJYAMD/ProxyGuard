@@ -59,7 +59,7 @@ When using proxy clients on macOS (such as Clash Verge, ClashX, Surge, Mihomo, o
 #### One-Line Installation (Recommended)
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/ProxyGuard.git
+git clone https://github.com/YJYAMD/ProxyGuard.git
 cd ProxyGuard
 ./scripts/install.sh
 ```

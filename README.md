@@ -62,7 +62,7 @@
 打开终端，直接运行：
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/ProxyGuard.git
+git clone https://github.com/YJYAMD/ProxyGuard.git
 cd ProxyGuard
 ./scripts/install.sh
 ```
