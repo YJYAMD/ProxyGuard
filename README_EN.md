@@ -11,6 +11,10 @@
 
 [English Document](README_EN.md) · [简体中文](README.md)
 
+<br/>
+
+<img src="assets/preview.png" width="360" alt="ProxyGuard macOS Menu Bar Preview" />
+
 </div>
 
 ---
