@@ -3,13 +3,83 @@ import Foundation
 import SystemConfiguration
 
 // ──────────────────────────────────────────────
-// MARK: - Indicator Style & Speed Format Enums
+// MARK: - Indicator Style, Speed & Color Enums
 // ──────────────────────────────────────────────
 enum IndicatorStyle: Int {
     case glowSphere = 0     // 🔮 霓虹晶体呼吸灯
     case capsule = 1        // 💊 灵动高科技胶囊
     case precisionRing = 2  // 🎯 精密极客光环
     case minimalGem = 3     // 💎 微光珠宝圆点
+}
+
+enum ColorTheme: Int, CaseIterable {
+    case appleNative = 0   // 🍏 Apple 原生雅致 (Apple HIG 官方标准温润绿与珊瑚红，护眼耐看)
+    case emeraldRose = 1   // 💎 冷萃翡翠与落日玫瑰 (Lush Emerald & Velvet Rose，质感轻奢)
+    case nordicMint = 2    // 🌿 柔雾薄荷与暖赤陶 (Nordic Mint & Coral，低饱和清爽)
+    case cyberNeon = 3     // ⚡️ 赛博微光霓虹 (高对比科技)
+
+    var name: String {
+        switch self {
+        case .appleNative: return "🍏  Apple 原生雅致 (推荐)"
+        case .emeraldRose: return "💎  冷萃翡翠与落日玫瑰"
+        case .nordicMint:  return "🌿  柔雾薄荷与暖赤陶"
+        case .cyberNeon:   return "⚡️  赛博微光霓虹"
+        }
+    }
+
+    // 畅通状态绿色系
+    var greenBase: NSColor {
+        switch self {
+        case .appleNative: // Apple System Green #30D158 / #34C759，温润自然
+            return NSColor(srgbRed: 0.19, green: 0.82, blue: 0.35, alpha: 1.0)
+        case .emeraldRose: // 珠宝级冷调翡翠绿 #10B981
+            return NSColor(srgbRed: 0.06, green: 0.73, blue: 0.51, alpha: 1.0)
+        case .nordicMint:  // 苹果极简薄荷青 #00C7BE
+            return NSColor(srgbRed: 0.00, green: 0.78, blue: 0.75, alpha: 1.0)
+        case .cyberNeon:   // 经典科技霓虹绿 #05E084
+            return NSColor(srgbRed: 0.05, green: 0.88, blue: 0.52, alpha: 1.0)
+        }
+    }
+
+    var greenGlow: NSColor {
+        switch self {
+        case .appleNative:
+            return NSColor(srgbRed: 0.19, green: 0.82, blue: 0.35, alpha: 0.32)
+        case .emeraldRose:
+            return NSColor(srgbRed: 0.06, green: 0.73, blue: 0.51, alpha: 0.30)
+        case .nordicMint:
+            return NSColor(srgbRed: 0.00, green: 0.78, blue: 0.75, alpha: 0.28)
+        case .cyberNeon:
+            return NSColor(srgbRed: 0.05, green: 0.88, blue: 0.52, alpha: 0.40)
+        }
+    }
+
+    // 断开状态红色系
+    var redBase: NSColor {
+        switch self {
+        case .appleNative: // Apple System Red #FF453A，深邃克制，不刺眼
+            return NSColor(srgbRed: 1.00, green: 0.27, blue: 0.23, alpha: 1.0)
+        case .emeraldRose: // 高级丝绒玫瑰红 #F43F5E
+            return NSColor(srgbRed: 0.96, green: 0.25, blue: 0.37, alpha: 1.0)
+        case .nordicMint:  // 暖赤陶落日珊瑚粉红 #FB7185
+            return NSColor(srgbRed: 0.98, green: 0.44, blue: 0.52, alpha: 1.0)
+        case .cyberNeon:   // 经典警示洋红 #FF3860
+            return NSColor(srgbRed: 1.00, green: 0.22, blue: 0.38, alpha: 1.0)
+        }
+    }
+
+    var redGlow: NSColor {
+        switch self {
+        case .appleNative:
+            return NSColor(srgbRed: 1.00, green: 0.27, blue: 0.23, alpha: 0.35)
+        case .emeraldRose:
+            return NSColor(srgbRed: 0.96, green: 0.25, blue: 0.37, alpha: 0.32)
+        case .nordicMint:
+            return NSColor(srgbRed: 0.98, green: 0.44, blue: 0.52, alpha: 0.28)
+        case .cyberNeon:
+            return NSColor(srgbRed: 1.00, green: 0.22, blue: 0.38, alpha: 0.40)
+        }
+    }
 }
 
 enum SpeedFormat: Int {
@@ -221,6 +291,7 @@ class StatusCardView: NSView {
     var proxyPort: Int = 7897
     var lastCheckStr: String = "--:--:--"
     var checkIntervalSec: Int = 1
+    var currentTheme: ColorTheme = .appleNative
 
     // Country & Node info
     var countryFlag: String = ""
@@ -263,46 +334,55 @@ class StatusCardView: NSView {
         cardPath.lineWidth = 0.5
         cardPath.stroke()
 
-        // ── Left Accent Strip ──
-        let accentColor = connected
-            ? NSColor(srgbRed: 0.05, green: 0.88, blue: 0.52, alpha: 1.0)
-            : NSColor(srgbRed: 1.00, green: 0.22, blue: 0.38, alpha: 1.0)
+        // ── Left Accent Strip (uses Theme colors) ──
+        let accentColor = connected ? currentTheme.greenBase : currentTheme.redBase
 
         let stripRect = NSRect(x: 10, y: 6, width: 4, height: cardHeight - 12)
         let stripPath = NSBezierPath(roundedRect: stripRect, xRadius: 2, yRadius: 2)
         accentColor.setFill()
         stripPath.fill()
 
-        // ── Status Dot ──
+        // ── Status Dot (Hardware LED Optical Glass Aesthetic) ──
         let dotCX: CGFloat = 34
         let dotCY: CGFloat = cardHeight - 34
 
-        let glowColor = accentColor.withAlphaComponent(connected ? 0.40 : 0.50)
+        // 1. Soft atmospheric glow
+        let glowColor = connected ? currentTheme.greenGlow : currentTheme.redGlow
         let glowColors = [glowColor.cgColor, glowColor.withAlphaComponent(0.0).cgColor] as CFArray
         if let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: glowColors, locations: [0.0, 1.0]) {
-            ctx.drawRadialGradient(g, startCenter: CGPoint(x: dotCX, y: dotCY), startRadius: 1.5, endCenter: CGPoint(x: dotCX, y: dotCY), endRadius: 10.0, options: .drawsAfterEndLocation)
+            ctx.drawRadialGradient(g, startCenter: CGPoint(x: dotCX, y: dotCY), startRadius: 1.0, endCenter: CGPoint(x: dotCX, y: dotCY), endRadius: 9.0, options: .drawsAfterEndLocation)
         }
-        ctx.setFillColor(NSColor(white: 0.0, alpha: 0.15).cgColor)
+
+        // 2. Anti-bleed precision bezel
+        let bezelColor = isDark ? NSColor(white: 1.0, alpha: 0.12) : NSColor(white: 0.0, alpha: 0.15)
+        ctx.setFillColor(bezelColor.cgColor)
         ctx.fillEllipse(in: CGRect(x: dotCX - 5.5, y: dotCY - 5.5, width: 11.0, height: 11.0))
 
+        // 3. Apple-style natural radial luminance
         let dotR = CGRect(x: dotCX - 5.0, y: dotCY - 5.0, width: 10.0, height: 10.0)
         ctx.saveGState()
         ctx.addEllipse(in: dotR)
         ctx.clip()
-        let cc = [accentColor.blended(withFraction: 0.40, of: .white)!.cgColor, accentColor.cgColor, accentColor.blended(withFraction: 0.28, of: .black)!.cgColor] as CFArray
-        if let cg = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: cc, locations: [0.0, 0.45, 1.0]) {
-            ctx.drawLinearGradient(cg, start: CGPoint(x: dotCX, y: dotCY + 5), end: CGPoint(x: dotCX, y: dotCY - 5), options: [])
+        let coreLight = accentColor.blended(withFraction: 0.28, of: .white)!.cgColor
+        let coreDark = accentColor.blended(withFraction: 0.18, of: .black)!.cgColor
+        let cc = [coreLight, accentColor.cgColor, coreDark] as CFArray
+        if let cg = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: cc, locations: [0.0, 0.50, 1.0]) {
+            ctx.drawRadialGradient(cg, startCenter: CGPoint(x: dotCX, y: dotCY + 1.2), startRadius: 0.4, endCenter: CGPoint(x: dotCX, y: dotCY), endRadius: 5.0, options: .drawsAfterEndLocation)
         }
         ctx.restoreGState()
 
-        ctx.setFillColor(NSColor(white: 1.0, alpha: 0.70).cgColor)
-        ctx.fillEllipse(in: CGRect(x: dotCX - 2.8, y: dotCY + 1.0, width: 5.6, height: 2.6))
+        // 4. Subtle frosted sapphire specular reflex (curved & translucent, no ugly white blob)
+        ctx.setFillColor(NSColor(white: 1.0, alpha: 0.35).cgColor)
+        ctx.fillEllipse(in: CGRect(x: dotCX - 2.5, y: dotCY + 1.4, width: 5.0, height: 1.6))
 
-        // ── Title ──
+        // ── Title (Harmonious Apple Tones) ──
         let titleStr = connected ? "代理连接畅通" : "代理连接已断开"
-        let titleColor = connected
-            ? (isDark ? NSColor(srgbRed: 0.35, green: 1.0, blue: 0.65, alpha: 1.0) : NSColor(srgbRed: 0.02, green: 0.65, blue: 0.38, alpha: 1.0))
-            : (isDark ? NSColor(srgbRed: 1.0, green: 0.48, blue: 0.48, alpha: 1.0) : NSColor(srgbRed: 0.90, green: 0.15, blue: 0.22, alpha: 1.0))
+        let titleColor: NSColor
+        if connected {
+            titleColor = isDark ? NSColor(srgbRed: 0.32, green: 0.86, blue: 0.52, alpha: 1.0) : NSColor(srgbRed: 0.10, green: 0.62, blue: 0.32, alpha: 1.0)
+        } else {
+            titleColor = isDark ? NSColor(srgbRed: 1.00, green: 0.45, blue: 0.42, alpha: 1.0) : NSColor(srgbRed: 0.88, green: 0.18, blue: 0.16, alpha: 1.0)
+        }
         let titleAttrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 14, weight: .semibold), .foregroundColor: titleColor]
         (titleStr as NSString).draw(at: NSPoint(x: 48, y: cardHeight - 38), withAttributes: titleAttrs)
 
@@ -312,14 +392,17 @@ class StatusCardView: NSView {
             let pillBg: NSColor
             let pillFg: NSColor
             if latencyMs < 80 {
-                tier = "极速"; pillBg = NSColor(srgbRed: 0.05, green: 0.88, blue: 0.52, alpha: isDark ? 0.20 : 0.16)
-                pillFg = isDark ? NSColor(srgbRed: 0.40, green: 1.0, blue: 0.68, alpha: 0.95) : NSColor(srgbRed: 0.02, green: 0.65, blue: 0.36, alpha: 0.95)
+                tier = "极速"
+                pillBg = NSColor.systemGreen.withAlphaComponent(isDark ? 0.20 : 0.14)
+                pillFg = isDark ? NSColor(srgbRed: 0.40, green: 0.95, blue: 0.65, alpha: 0.95) : NSColor(srgbRed: 0.05, green: 0.62, blue: 0.32, alpha: 0.95)
             } else if latencyMs < 200 {
-                tier = "良好"; pillBg = NSColor(srgbRed: 0.0, green: 0.70, blue: 1.0, alpha: isDark ? 0.20 : 0.16)
-                pillFg = isDark ? NSColor(srgbRed: 0.35, green: 0.80, blue: 1.0, alpha: 0.95) : NSColor(srgbRed: 0.0, green: 0.50, blue: 0.85, alpha: 0.95)
+                tier = "良好"
+                pillBg = NSColor.systemBlue.withAlphaComponent(isDark ? 0.20 : 0.14)
+                pillFg = isDark ? NSColor(srgbRed: 0.40, green: 0.82, blue: 1.0, alpha: 0.95) : NSColor(srgbRed: 0.0, green: 0.48, blue: 0.85, alpha: 0.95)
             } else {
-                tier = "偏高"; pillBg = NSColor(srgbRed: 1.0, green: 0.70, blue: 0.0, alpha: isDark ? 0.20 : 0.16)
-                pillFg = isDark ? NSColor(srgbRed: 1.0, green: 0.80, blue: 0.25, alpha: 0.95) : NSColor(srgbRed: 0.80, green: 0.55, blue: 0.0, alpha: 0.95)
+                tier = "偏高"
+                pillBg = NSColor.systemOrange.withAlphaComponent(isDark ? 0.20 : 0.14)
+                pillFg = isDark ? NSColor(srgbRed: 1.0, green: 0.75, blue: 0.30, alpha: 0.95) : NSColor(srgbRed: 0.80, green: 0.50, blue: 0.0, alpha: 0.95)
             }
             let pillText = "\(latencyMs)ms · \(tier)"
             let pillAttrs: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .semibold), .foregroundColor: pillFg]
@@ -330,8 +413,8 @@ class StatusCardView: NSView {
             NSBezierPath(roundedRect: NSRect(x: pX, y: pY, width: pW, height: pHt), xRadius: pHt / 2, yRadius: pHt / 2).fill(with: pillBg)
             (pillText as NSString).draw(at: NSPoint(x: pX + pH, y: pY + pV), withAttributes: pillAttrs)
         } else {
-            let wBg = isDark ? NSColor(srgbRed: 1.0, green: 0.22, blue: 0.38, alpha: 0.22) : NSColor(srgbRed: 1.0, green: 0.22, blue: 0.38, alpha: 0.16)
-            let wFg = isDark ? NSColor(srgbRed: 1.0, green: 0.45, blue: 0.50, alpha: 0.95) : NSColor(srgbRed: 0.90, green: 0.15, blue: 0.22, alpha: 0.95)
+            let wBg = NSColor.systemRed.withAlphaComponent(isDark ? 0.22 : 0.14)
+            let wFg = isDark ? NSColor(srgbRed: 1.0, green: 0.45, blue: 0.45, alpha: 0.95) : NSColor(srgbRed: 0.88, green: 0.16, blue: 0.16, alpha: 0.95)
             let wText = "已断开"
             let wAttrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 11, weight: .semibold), .foregroundColor: wFg]
             let wSize = (wText as NSString).size(withAttributes: wAttrs)
@@ -451,6 +534,7 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
     var checkInterval: TimeInterval = 1.0
     var isChecking: Bool = false
     var currentStyle: IndicatorStyle = .glowSphere
+    var currentTheme: ColorTheme = .appleNative  // 默认使用全新 Apple 原生雅致配色！
     var soundEnabled: Bool = true
 
     // Country & Node info
@@ -488,6 +572,8 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
     var showFlagMenuItem: NSMenuItem!
     var speedFormatMenuItems: [NSMenuItem] = []
     var speedMetricMenuItems: [NSMenuItem] = []
+    var styleMenuItems: [NSMenuItem] = []
+    var themeMenuItems: [NSMenuItem] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         rebuildIcons()
@@ -586,17 +672,14 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
         let height: CGFloat = 18.0
         let size = NSSize(width: width, height: height)
 
-        let baseColor: NSColor
-        let glowColor: NSColor
+        let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
 
-        if connected {
-            baseColor = NSColor(srgbRed: 0.05, green: 0.88, blue: 0.52, alpha: 1.0)
-            glowColor = NSColor(srgbRed: 0.05, green: 0.88, blue: 0.52, alpha: 0.45)
-        } else {
-            let alpha: CGFloat = dimmed ? 0.38 : 1.0
-            baseColor = NSColor(srgbRed: 1.00, green: 0.22, blue: 0.38, alpha: alpha)
-            glowColor = NSColor(srgbRed: 1.00, green: 0.22, blue: 0.38, alpha: dimmed ? 0.12 : 0.50)
-        }
+        let rawBase = connected ? currentTheme.greenBase : currentTheme.redBase
+        let rawGlow = connected ? currentTheme.greenGlow : currentTheme.redGlow
+
+        let alpha: CGFloat = dimmed ? 0.36 : 1.0
+        let baseColor = rawBase.withAlphaComponent(alpha)
+        let glowColor = rawGlow.withAlphaComponent(dimmed ? 0.10 : rawGlow.alphaComponent)
 
         let img = NSImage(size: size, flipped: false) { _ in
             guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
@@ -604,56 +687,88 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
 
             switch style {
             case .glowSphere:
+                // 1. Soft atmospheric bloom
                 let gc = [glowColor.cgColor, glowColor.withAlphaComponent(0.0).cgColor] as CFArray
                 if let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: gc, locations: [0.0, 1.0]) {
-                    ctx.drawRadialGradient(g, startCenter: CGPoint(x: cx, y: cy), startRadius: 1.8, endCenter: CGPoint(x: cx, y: cy), endRadius: 8.5, options: .drawsAfterEndLocation)
+                    ctx.drawRadialGradient(g, startCenter: CGPoint(x: cx, y: cy), startRadius: 1.2, endCenter: CGPoint(x: cx, y: cy), endRadius: 8.0, options: .drawsAfterEndLocation)
                 }
-                ctx.setFillColor(NSColor(white: 0.0, alpha: 0.16).cgColor)
-                ctx.fillEllipse(in: CGRect(x: cx - 4.8, y: cy - 4.8, width: 9.6, height: 9.6))
-                let sr = CGRect(x: cx - 4.2, y: cy - 4.2, width: 8.4, height: 8.4)
-                ctx.saveGState(); ctx.addEllipse(in: sr); ctx.clip()
-                let sc = [baseColor.blended(withFraction: 0.40, of: .white)!.cgColor, baseColor.cgColor, baseColor.blended(withFraction: 0.28, of: .black)!.cgColor] as CFArray
-                if let sg = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: sc, locations: [0.0, 0.45, 1.0]) {
-                    ctx.drawLinearGradient(sg, start: CGPoint(x: cx, y: sr.maxY), end: CGPoint(x: cx, y: sr.minY), options: [])
+
+                // 2. Anti-bleed precision bezel (hairline)
+                let bezelColor = isDark ? NSColor(white: 1.0, alpha: dimmed ? 0.08 : 0.15) : NSColor(white: 0.0, alpha: dimmed ? 0.08 : 0.18)
+                ctx.setFillColor(bezelColor.cgColor)
+                ctx.fillEllipse(in: CGRect(x: cx - 4.6, y: cy - 4.6, width: 9.2, height: 9.2))
+
+                // 3. Apple-style luminous radial core
+                let sr = CGRect(x: cx - 4.1, y: cy - 4.1, width: 8.2, height: 8.2)
+                ctx.saveGState()
+                ctx.addEllipse(in: sr)
+                ctx.clip()
+
+                let cTop = baseColor.blended(withFraction: 0.28, of: .white)!.cgColor
+                let cBottom = baseColor.blended(withFraction: 0.20, of: .black)!.cgColor
+                let sc = [cTop, baseColor.cgColor, cBottom] as CFArray
+                if let sg = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: sc, locations: [0.0, 0.50, 1.0]) {
+                    ctx.drawRadialGradient(sg, startCenter: CGPoint(x: cx, y: cy + 1.0), startRadius: 0.5, endCenter: CGPoint(x: cx, y: cy), endRadius: 4.1, options: .drawsAfterEndLocation)
                 }
                 ctx.restoreGState()
-                ctx.setFillColor(NSColor(white: 1.0, alpha: dimmed ? 0.25 : 0.70).cgColor)
-                ctx.fillEllipse(in: CGRect(x: cx - 2.8, y: cy + 0.6, width: 5.6, height: 2.6))
+
+                // 4. Subtle frosted sapphire specular reflex (curved & translucent, no ugly white blob)
+                ctx.setFillColor(NSColor(white: 1.0, alpha: dimmed ? 0.15 : 0.35).cgColor)
+                ctx.fillEllipse(in: CGRect(x: cx - 2.2, y: cy + 1.2, width: 4.4, height: 1.4))
 
             case .capsule:
                 let cw: CGFloat = 16.0, ch: CGFloat = 6.4
                 let capX = (width - cw) / 2.0, capY = (height - ch) / 2.0
-                let halo = NSBezierPath(roundedRect: NSRect(x: capX - 1.5, y: capY - 1.5, width: cw + 3, height: ch + 3), xRadius: 4.5, yRadius: 4.5)
+                let halo = NSBezierPath(roundedRect: NSRect(x: capX - 1.2, y: capY - 1.2, width: cw + 2.4, height: ch + 2.4), xRadius: 4.2, yRadius: 4.2)
                 glowColor.setFill(); halo.fill()
+
+                let bezelColor = isDark ? NSColor(white: 1.0, alpha: 0.14) : NSColor(white: 0.0, alpha: 0.16)
+                bezelColor.setStroke()
                 let bodyPath = NSBezierPath(roundedRect: NSRect(x: capX, y: capY, width: cw, height: ch), xRadius: 3.2, yRadius: 3.2)
+                bodyPath.lineWidth = 0.5
                 ctx.saveGState(); bodyPath.addClip()
-                let ccap = [baseColor.blended(withFraction: 0.35, of: .white)!.cgColor, baseColor.cgColor] as CFArray
-                if let cg = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: ccap, locations: [0.0, 1.0]) {
+                let ccap = [baseColor.blended(withFraction: 0.25, of: .white)!.cgColor, baseColor.cgColor, baseColor.blended(withFraction: 0.15, of: .black)!.cgColor] as CFArray
+                if let cg = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: ccap, locations: [0.0, 0.5, 1.0]) {
                     ctx.drawLinearGradient(cg, start: CGPoint(x: cx, y: capY + ch), end: CGPoint(x: cx, y: capY), options: [])
                 }
                 ctx.restoreGState()
-                ctx.setFillColor(NSColor(white: 1.0, alpha: dimmed ? 0.20 : 0.45).cgColor)
-                NSBezierPath(roundedRect: NSRect(x: capX + 2, y: capY + ch - 2.2, width: cw - 4, height: 1.4), xRadius: 0.7, yRadius: 0.7).fill()
+                bodyPath.stroke()
+
+                // Micro highlight
+                ctx.setFillColor(NSColor(white: 1.0, alpha: dimmed ? 0.12 : 0.30).cgColor)
+                NSBezierPath(roundedRect: NSRect(x: capX + 2.5, y: capY + ch - 1.8, width: cw - 5.0, height: 1.0), xRadius: 0.5, yRadius: 0.5).fill()
 
             case .precisionRing:
-                ctx.setStrokeColor(baseColor.withAlphaComponent(dimmed ? 0.30 : 0.75).cgColor)
-                ctx.setLineWidth(1.3)
+                let strokeC = baseColor.withAlphaComponent(dimmed ? 0.30 : 0.85)
+                ctx.setStrokeColor(strokeC.cgColor)
+                ctx.setLineWidth(1.2)
                 ctx.strokeEllipse(in: CGRect(x: cx - 5.5, y: cy - 5.5, width: 11, height: 11))
+                // Inner solid dot
                 ctx.setFillColor(baseColor.cgColor)
                 ctx.fillEllipse(in: CGRect(x: cx - 2.5, y: cy - 2.5, width: 5, height: 5))
 
             case .minimalGem:
-                let r: CGFloat = 3.6
+                let r: CGFloat = 3.8
                 let gc = [glowColor.cgColor, glowColor.withAlphaComponent(0.0).cgColor] as CFArray
                 if let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: gc, locations: [0.0, 1.0]) {
-                    ctx.drawRadialGradient(g, startCenter: CGPoint(x: cx, y: cy), startRadius: 1.0, endCenter: CGPoint(x: cx, y: cy), endRadius: 6.0, options: .drawsAfterEndLocation)
+                    ctx.drawRadialGradient(g, startCenter: CGPoint(x: cx, y: cy), startRadius: 1.0, endCenter: CGPoint(x: cx, y: cy), endRadius: 6.5, options: .drawsAfterEndLocation)
                 }
-                ctx.setStrokeColor(NSColor(white: 1.0, alpha: 0.25).cgColor); ctx.setLineWidth(0.6)
-                ctx.strokeEllipse(in: CGRect(x: cx - r - 0.5, y: cy - r - 0.5, width: (r + 0.5) * 2, height: (r + 0.5) * 2))
-                ctx.setFillColor(baseColor.cgColor)
-                ctx.fillEllipse(in: CGRect(x: cx - r, y: cy - r, width: r * 2, height: r * 2))
-                ctx.setFillColor(NSColor(white: 1.0, alpha: dimmed ? 0.20 : 0.75).cgColor)
-                ctx.fillEllipse(in: CGRect(x: cx - 1.5, y: cy + 0.8, width: 3.0, height: 1.5))
+                let rimC = isDark ? NSColor(white: 1.0, alpha: 0.15) : NSColor(white: 0.0, alpha: 0.18)
+                ctx.setStrokeColor(rimC.cgColor)
+                ctx.setLineWidth(0.5)
+                ctx.strokeEllipse(in: CGRect(x: cx - r - 0.25, y: cy - r - 0.25, width: (r + 0.25) * 2, height: (r + 0.25) * 2))
+
+                ctx.saveGState()
+                ctx.addEllipse(in: CGRect(x: cx - r, y: cy - r, width: r * 2, height: r * 2))
+                ctx.clip()
+                let sc = [baseColor.blended(withFraction: 0.25, of: .white)!.cgColor, baseColor.cgColor, baseColor.blended(withFraction: 0.15, of: .black)!.cgColor] as CFArray
+                if let sg = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: sc, locations: [0.0, 0.5, 1.0]) {
+                    ctx.drawRadialGradient(sg, startCenter: CGPoint(x: cx, y: cy + 0.8), startRadius: 0.3, endCenter: CGPoint(x: cx, y: cy), endRadius: r, options: .drawsAfterEndLocation)
+                }
+                ctx.restoreGState()
+
+                ctx.setFillColor(NSColor(white: 1.0, alpha: dimmed ? 0.12 : 0.35).cgColor)
+                ctx.fillEllipse(in: CGRect(x: cx - 1.2, y: cy + 1.0, width: 2.4, height: 0.9))
             }
             return true
         }
@@ -679,6 +794,7 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
         menu.minimumWidth = 280
 
         statusCardView = StatusCardView()
+        statusCardView.currentTheme = currentTheme
         statusCardView.frame = NSRect(x: 0, y: 0, width: 280, height: 186)
         statusCardMenuItem = NSMenuItem()
         statusCardMenuItem.view = statusCardView
@@ -735,19 +851,32 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
         intParent.submenu = intervalMenu
         menu.addItem(intParent)
 
-        // Style submenu
+        // Indicator Style submenu
         let styleMenu = NSMenu()
         for (i, name) in ["🔮  霓虹晶体呼吸灯", "💊  灵动高科技胶囊", "🎯  精密极客光环", "💎  微光珠宝圆点"].enumerated() {
             let item = NSMenuItem(title: name, action: #selector(setStyleClicked(_:)), keyEquivalent: "")
-            item.tag = i; item.target = self; item.state = (i == 0) ? .on : .off
+            item.tag = i; item.target = self; item.state = (i == currentStyle.rawValue) ? .on : .off
             styleMenu.addItem(item)
+            styleMenuItems.append(item)
         }
-        let styleParent = makeMenuItem(title: "图标视觉样式", symbol: "paintpalette", action: nil)
+        let styleParent = makeMenuItem(title: "指示灯图形样式", symbol: "paintpalette", action: nil)
         styleParent.submenu = styleMenu
         menu.addItem(styleParent)
 
+        // Color Theme submenu
+        let themeMenu = NSMenu()
+        for (i, theme) in ColorTheme.allCases.enumerated() {
+            let item = NSMenuItem(title: theme.name, action: #selector(setThemeClicked(_:)), keyEquivalent: "")
+            item.tag = i; item.target = self; item.state = (i == currentTheme.rawValue) ? .on : .off
+            themeMenu.addItem(item)
+            themeMenuItems.append(item)
+        }
+        let themeParent = makeMenuItem(title: "状态指示灯配色", symbol: "swatchpalette", action: nil)
+        themeParent.submenu = themeMenu
+        menu.addItem(themeParent)
+
         soundMenuItem = makeMenuItem(title: "断开声音提示", symbol: "speaker.wave.2", action: #selector(toggleSoundClicked))
-        soundMenuItem.state = .on
+        soundMenuItem.state = soundEnabled ? .on : .off
         menu.addItem(soundMenuItem)
 
         menu.addItem(NSMenuItem.separator())
@@ -815,6 +944,24 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
             if let button = statusItem.button { button.image = isConnected ? greenImage : redImageBright }
             if !isConnected { startPulse() }
             if let p = sender.menu { for i in p.items { i.state = (i == sender) ? .on : .off } }
+        }
+    }
+
+    @objc func setThemeClicked(_ sender: NSMenuItem) {
+        if let t = ColorTheme(rawValue: sender.tag) {
+            currentTheme = t
+            statusCardView.currentTheme = t
+            rebuildIcons()
+            if let button = statusItem.button {
+                button.image = isConnected ? greenImage : redImageBright
+            }
+            if !isConnected { startPulse() }
+            if let p = sender.menu {
+                for item in p.items {
+                    item.state = (item.tag == sender.tag) ? .on : .off
+                }
+            }
+            statusCardView.needsDisplay = true
         }
     }
 
@@ -925,7 +1072,6 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
             }
         }.resume()
 
-        // Periodically refresh active node name from mihomo API
         if Int(Date().timeIntervalSince1970) % 5 == 0 {
             refreshActiveNodeName()
         }
