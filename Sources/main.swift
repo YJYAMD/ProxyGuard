@@ -305,8 +305,8 @@ class StatusCardView: NSView {
     var upTotal: Int64 = 0
     var downTotal: Int64 = 0
 
-    private let cardWidth: CGFloat = 280
-    private let cardHeight: CGFloat = 186
+    private let cardWidth: CGFloat = 276
+    private let cardHeight: CGFloat = 190
 
     override var intrinsicContentSize: NSSize {
         return NSSize(width: cardWidth, height: cardHeight)
@@ -318,48 +318,45 @@ class StatusCardView: NSView {
 
         let isDark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
 
-        // ── Card Container ──
+        // ── Card Container (Clean Apple Control Center Surface) ──
         let cardRect = NSRect(x: 10, y: 6, width: cardWidth - 20, height: cardHeight - 12)
         let cardPath = NSBezierPath(roundedRect: cardRect, xRadius: 12, yRadius: 12)
 
         if isDark {
-            NSColor(white: 1.0, alpha: 0.07).setFill()
+            NSColor(white: 1.0, alpha: 0.065).setFill()
         } else {
-            NSColor(white: 0.0, alpha: 0.04).setFill()
+            NSColor(white: 0.0, alpha: 0.035).setFill()
         }
         cardPath.fill()
 
-        let strokeColor = isDark ? NSColor(white: 1.0, alpha: 0.12) : NSColor(white: 0.0, alpha: 0.08)
+        let strokeColor = isDark ? NSColor(white: 1.0, alpha: 0.11) : NSColor(white: 0.0, alpha: 0.075)
         strokeColor.setStroke()
         cardPath.lineWidth = 0.5
         cardPath.stroke()
 
-        // ── Left Accent Strip (uses Theme colors) ──
+        let innerLeft: CGFloat = cardRect.minX + 14
+        let innerRight: CGFloat = cardRect.maxX - 14
+        let innerWidth: CGFloat = innerRight - innerLeft
+
+        // ── Header Row: Optical Status LED + Title + Right KPI Pill ──
         let accentColor = connected ? currentTheme.greenBase : currentTheme.redBase
+        let headerCY: CGFloat = cardRect.maxY - 21
 
-        let stripRect = NSRect(x: 10, y: 6, width: 4, height: cardHeight - 12)
-        let stripPath = NSBezierPath(roundedRect: stripRect, xRadius: 2, yRadius: 2)
-        accentColor.setFill()
-        stripPath.fill()
+        // 1. Optical Glass LED Dot
+        let dotCX: CGFloat = innerLeft + 5.5
+        let dotCY: CGFloat = headerCY
 
-        // ── Status Dot (Hardware LED Optical Glass Aesthetic) ──
-        let dotCX: CGFloat = 34
-        let dotCY: CGFloat = cardHeight - 34
-
-        // 1. Soft atmospheric glow
         let glowColor = connected ? currentTheme.greenGlow : currentTheme.redGlow
         let glowColors = [glowColor.cgColor, glowColor.withAlphaComponent(0.0).cgColor] as CFArray
         if let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: glowColors, locations: [0.0, 1.0]) {
-            ctx.drawRadialGradient(g, startCenter: CGPoint(x: dotCX, y: dotCY), startRadius: 1.0, endCenter: CGPoint(x: dotCX, y: dotCY), endRadius: 9.0, options: .drawsAfterEndLocation)
+            ctx.drawRadialGradient(g, startCenter: CGPoint(x: dotCX, y: dotCY), startRadius: 1.0, endCenter: CGPoint(x: dotCX, y: dotCY), endRadius: 8.5, options: .drawsAfterEndLocation)
         }
 
-        // 2. Anti-bleed precision bezel
-        let bezelColor = isDark ? NSColor(white: 1.0, alpha: 0.12) : NSColor(white: 0.0, alpha: 0.15)
+        let bezelColor = isDark ? NSColor(white: 1.0, alpha: 0.12) : NSColor(white: 0.0, alpha: 0.14)
         ctx.setFillColor(bezelColor.cgColor)
-        ctx.fillEllipse(in: CGRect(x: dotCX - 5.5, y: dotCY - 5.5, width: 11.0, height: 11.0))
+        ctx.fillEllipse(in: CGRect(x: dotCX - 5.0, y: dotCY - 5.0, width: 10.0, height: 10.0))
 
-        // 3. Apple-style natural radial luminance
-        let dotR = CGRect(x: dotCX - 5.0, y: dotCY - 5.0, width: 10.0, height: 10.0)
+        let dotR = CGRect(x: dotCX - 4.5, y: dotCY - 4.5, width: 9.0, height: 9.0)
         ctx.saveGState()
         ctx.addEllipse(in: dotR)
         ctx.clip()
@@ -367,124 +364,172 @@ class StatusCardView: NSView {
         let coreDark = accentColor.blended(withFraction: 0.18, of: .black)!.cgColor
         let cc = [coreLight, accentColor.cgColor, coreDark] as CFArray
         if let cg = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: cc, locations: [0.0, 0.50, 1.0]) {
-            ctx.drawRadialGradient(cg, startCenter: CGPoint(x: dotCX, y: dotCY + 1.2), startRadius: 0.4, endCenter: CGPoint(x: dotCX, y: dotCY), endRadius: 5.0, options: .drawsAfterEndLocation)
+            ctx.drawRadialGradient(cg, startCenter: CGPoint(x: dotCX, y: dotCY + 1.1), startRadius: 0.3, endCenter: CGPoint(x: dotCX, y: dotCY), endRadius: 4.5, options: .drawsAfterEndLocation)
         }
         ctx.restoreGState()
 
-        // 4. Subtle frosted sapphire specular reflex (curved & translucent, no ugly white blob)
-        ctx.setFillColor(NSColor(white: 1.0, alpha: 0.35).cgColor)
-        ctx.fillEllipse(in: CGRect(x: dotCX - 2.5, y: dotCY + 1.4, width: 5.0, height: 1.6))
+        ctx.setFillColor(NSColor(white: 1.0, alpha: 0.36).cgColor)
+        ctx.fillEllipse(in: CGRect(x: dotCX - 2.2, y: dotCY + 1.2, width: 4.4, height: 1.4))
 
-        // ── Title (Harmonious Apple Tones) ──
-        let titleStr = connected ? "代理连接畅通" : "代理连接已断开"
-        let titleColor: NSColor
-        if connected {
-            titleColor = isDark ? NSColor(srgbRed: 0.32, green: 0.86, blue: 0.52, alpha: 1.0) : NSColor(srgbRed: 0.10, green: 0.62, blue: 0.32, alpha: 1.0)
-        } else {
-            titleColor = isDark ? NSColor(srgbRed: 1.00, green: 0.45, blue: 0.42, alpha: 1.0) : NSColor(srgbRed: 0.88, green: 0.18, blue: 0.16, alpha: 1.0)
-        }
-        let titleAttrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 14, weight: .semibold), .foregroundColor: titleColor]
-        (titleStr as NSString).draw(at: NSPoint(x: 48, y: cardHeight - 38), withAttributes: titleAttrs)
+        // 2. Clean Primary Title
+        let titleStr = connected ? "代理畅通" : "代理已断开"
+        let titleColor = isDark ? NSColor(white: 1.0, alpha: 0.94) : NSColor(white: 0.0, alpha: 0.88)
+        let titleAttrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 13.5, weight: .semibold),
+            .foregroundColor: titleColor
+        ]
+        let titleSize = (titleStr as NSString).size(withAttributes: titleAttrs)
+        (titleStr as NSString).draw(at: NSPoint(x: innerLeft + 18, y: headerCY - titleSize.height / 2 + 0.5), withAttributes: titleAttrs)
 
-        // ── Right-side KPI Pill ──
+        // 3. Right-side Latency / State Pill
+        let pillText: String
+        let pillBg: NSColor
+        let pillFg: NSColor
         if connected {
             let tier: String
-            let pillBg: NSColor
-            let pillFg: NSColor
             if latencyMs < 80 {
                 tier = "极速"
-                pillBg = NSColor.systemGreen.withAlphaComponent(isDark ? 0.20 : 0.14)
-                pillFg = isDark ? NSColor(srgbRed: 0.40, green: 0.95, blue: 0.65, alpha: 0.95) : NSColor(srgbRed: 0.05, green: 0.62, blue: 0.32, alpha: 0.95)
+                pillBg = NSColor.systemGreen.withAlphaComponent(isDark ? 0.20 : 0.13)
+                pillFg = isDark ? NSColor(srgbRed: 0.38, green: 0.92, blue: 0.58, alpha: 0.98) : NSColor(srgbRed: 0.07, green: 0.58, blue: 0.28, alpha: 0.98)
             } else if latencyMs < 200 {
                 tier = "良好"
-                pillBg = NSColor.systemBlue.withAlphaComponent(isDark ? 0.20 : 0.14)
-                pillFg = isDark ? NSColor(srgbRed: 0.40, green: 0.82, blue: 1.0, alpha: 0.95) : NSColor(srgbRed: 0.0, green: 0.48, blue: 0.85, alpha: 0.95)
+                pillBg = NSColor.systemBlue.withAlphaComponent(isDark ? 0.20 : 0.13)
+                pillFg = isDark ? NSColor(srgbRed: 0.42, green: 0.80, blue: 1.0, alpha: 0.98) : NSColor(srgbRed: 0.0, green: 0.46, blue: 0.85, alpha: 0.98)
             } else {
                 tier = "偏高"
-                pillBg = NSColor.systemOrange.withAlphaComponent(isDark ? 0.20 : 0.14)
-                pillFg = isDark ? NSColor(srgbRed: 1.0, green: 0.75, blue: 0.30, alpha: 0.95) : NSColor(srgbRed: 0.80, green: 0.50, blue: 0.0, alpha: 0.95)
+                pillBg = NSColor.systemOrange.withAlphaComponent(isDark ? 0.20 : 0.13)
+                pillFg = isDark ? NSColor(srgbRed: 1.0, green: 0.74, blue: 0.30, alpha: 0.98) : NSColor(srgbRed: 0.78, green: 0.45, blue: 0.0, alpha: 0.98)
             }
-            let pillText = "\(latencyMs)ms · \(tier)"
-            let pillAttrs: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .semibold), .foregroundColor: pillFg]
-            let pillSize = (pillText as NSString).size(withAttributes: pillAttrs)
-            let pH: CGFloat = 8, pV: CGFloat = 4
-            let pW = pillSize.width + pH * 2, pHt = pillSize.height + pV * 2
-            let pX = cardRect.maxX - pW - 8, pY = cardHeight - 44
-            NSBezierPath(roundedRect: NSRect(x: pX, y: pY, width: pW, height: pHt), xRadius: pHt / 2, yRadius: pHt / 2).fill(with: pillBg)
-            (pillText as NSString).draw(at: NSPoint(x: pX + pH, y: pY + pV), withAttributes: pillAttrs)
+            pillText = "\(latencyMs)ms · \(tier)"
         } else {
-            let wBg = NSColor.systemRed.withAlphaComponent(isDark ? 0.22 : 0.14)
-            let wFg = isDark ? NSColor(srgbRed: 1.0, green: 0.45, blue: 0.45, alpha: 0.95) : NSColor(srgbRed: 0.88, green: 0.16, blue: 0.16, alpha: 0.95)
-            let wText = "已断开"
-            let wAttrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 11, weight: .semibold), .foregroundColor: wFg]
-            let wSize = (wText as NSString).size(withAttributes: wAttrs)
-            let wPH: CGFloat = 8, wPV: CGFloat = 4
-            let wW = wSize.width + wPH * 2, wH = wSize.height + wPV * 2
-            let wX = cardRect.maxX - wW - 8, wY = cardHeight - 44
-            NSBezierPath(roundedRect: NSRect(x: wX, y: wY, width: wW, height: wH), xRadius: wH / 2, yRadius: wH / 2).fill(with: wBg)
-            (wText as NSString).draw(at: NSPoint(x: wX + wPH, y: wY + wPV), withAttributes: wAttrs)
+            pillText = "已断开"
+            pillBg = NSColor.systemRed.withAlphaComponent(isDark ? 0.22 : 0.13)
+            pillFg = isDark ? NSColor(srgbRed: 1.0, green: 0.46, blue: 0.44, alpha: 0.98) : NSColor(srgbRed: 0.85, green: 0.16, blue: 0.15, alpha: 0.98)
         }
+        let pillAttrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 10.5, weight: .semibold),
+            .foregroundColor: pillFg
+        ]
+        let pillSize = (pillText as NSString).size(withAttributes: pillAttrs)
+        let pH: CGFloat = 8, pV: CGFloat = 3.5
+        let pW = pillSize.width + pH * 2
+        let pHt = pillSize.height + pV * 2
+        let pX = innerRight - pW
+        let pY = headerCY - pHt / 2
+        NSBezierPath(roundedRect: NSRect(x: pX, y: pY, width: pW, height: pHt), xRadius: pHt / 2, yRadius: pHt / 2).fill(with: pillBg)
+        (pillText as NSString).draw(at: NSPoint(x: pX + pH, y: pY + pV), withAttributes: pillAttrs)
 
-        // ── Detail Rows (Structured Information) ──
-        let detailColor = isDark ? NSColor(white: 1.0, alpha: 0.65) : NSColor(white: 0.0, alpha: 0.60)
-        let monoAttrs: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular), .foregroundColor: detailColor]
-
-        let row1Y: CGFloat = cardHeight - 56
-        let row2Y: CGFloat = cardHeight - 72
-        let row3Y: CGFloat = cardHeight - 88
-        let row4Y: CGFloat = cardHeight - 104
-
-        // Row 1: 国家与地区
-        let flag = countryFlag.isEmpty ? "🌐" : countryFlag
-        let name = countryName.isEmpty ? "正在识别国家..." : countryName
-        let ipSuffix = exitIP.isEmpty ? "" : " · \(exitIP)"
-        let countryLine = "地区  \(flag) \(name)\(ipSuffix)"
-        (countryLine as NSString).draw(at: NSPoint(x: 24, y: row1Y), withAttributes: monoAttrs)
-
-        // Row 2: 节点名称
-        let nodeDisplay = nodeName.isEmpty ? "\(proxyHost):\(proxyPort)" : nodeName
-        let nodeLine = "节点  \(nodeDisplay)"
-        (nodeLine as NSString).draw(at: NSPoint(x: 24, y: row2Y), withAttributes: monoAttrs)
-
-        // Row 3: 延迟与端口
-        let latLabel = connected ? "延迟  \(latencyMs) ms  ·  端口 \(proxyPort)" : "延迟  超时  ·  端口 \(proxyPort)"
-        (latLabel as NSString).draw(at: NSPoint(x: 24, y: row3Y), withAttributes: monoAttrs)
-
-        // Row 4: 上次检测时间
-        let timeLabel = "检测  \(lastCheckStr)  ·  每 \(checkIntervalSec)s"
-        (timeLabel as NSString).draw(at: NSPoint(x: 24, y: row4Y), withAttributes: monoAttrs)
-
-        // ── Traffic Section (2 Clean, Non-overlapping Rows) ──
-        let dividerY: CGFloat = cardHeight - 116
+        // ── Subtle Header Divider ──
+        let dividerY: CGFloat = cardRect.maxY - 41
         let divPath = NSBezierPath()
-        divPath.move(to: NSPoint(x: cardRect.minX + 8, y: dividerY))
-        divPath.line(to: NSPoint(x: cardRect.maxX - 8, y: dividerY))
-        (isDark ? NSColor(white: 1.0, alpha: 0.10) : NSColor(white: 0.0, alpha: 0.08)).setStroke()
+        divPath.move(to: NSPoint(x: innerLeft, y: dividerY))
+        divPath.line(to: NSPoint(x: innerRight, y: dividerY))
+        (isDark ? NSColor(white: 1.0, alpha: 0.09) : NSColor(white: 0.0, alpha: 0.07)).setStroke()
         divPath.lineWidth = 0.5
         divPath.stroke()
 
-        // Traffic Row 1: 实时速率
-        let speedRowY: CGFloat = cardHeight - 134
-        let upArrowColor = NSColor(srgbRed: 1.0, green: 0.60, blue: 0.20, alpha: isDark ? 0.90 : 0.85)
-        let upAttrs: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium), .foregroundColor: upArrowColor]
-        ("↑ " + formatSpeedAdaptive(upSpeed) as NSString).draw(at: NSPoint(x: 24, y: speedRowY), withAttributes: upAttrs)
+        // ── Structured Key-Value Rows (Left Label, Right Aligned Value) ──
+        let labelColor = isDark ? NSColor(white: 1.0, alpha: 0.48) : NSColor(white: 0.0, alpha: 0.46)
+        let valueColor = isDark ? NSColor(white: 1.0, alpha: 0.86) : NSColor(white: 0.0, alpha: 0.82)
+        let mutedValueColor = isDark ? NSColor(white: 1.0, alpha: 0.62) : NSColor(white: 0.0, alpha: 0.58)
+        let errColor = isDark ? NSColor(srgbRed: 1.0, green: 0.48, blue: 0.46, alpha: 0.95) : NSColor(srgbRed: 0.84, green: 0.16, blue: 0.15, alpha: 0.95)
 
-        let dnArrowColor = NSColor(srgbRed: 0.30, green: 0.70, blue: 1.0, alpha: isDark ? 0.90 : 0.85)
-        let dnAttrs: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium), .foregroundColor: dnArrowColor]
-        ("↓ " + formatSpeedAdaptive(downSpeed) as NSString).draw(at: NSPoint(x: 145, y: speedRowY), withAttributes: dnAttrs)
+        let labelAttrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 11.5, weight: .regular),
+            .foregroundColor: labelColor
+        ]
 
-        // Traffic Row 2: 累计统计
-        let totalRowY: CGFloat = cardHeight - 152
-        let totalStr = "累计  ↑\(formatTotalBytes(upTotal))   ↓\(formatTotalBytes(downTotal))"
-        let totalAttrs: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular), .foregroundColor: detailColor.withAlphaComponent(0.75)]
-        (totalStr as NSString).draw(at: NSPoint(x: 24, y: totalRowY), withAttributes: totalAttrs)
+        let rightPara = NSMutableParagraphStyle()
+        rightPara.alignment = .right
+        rightPara.lineBreakMode = .byTruncatingTail
 
-        // ── Error detail ──
-        if !connected && !errorText.isEmpty {
-            let errColor = isDark ? NSColor(srgbRed: 1.0, green: 0.50, blue: 0.50, alpha: 0.85) : NSColor(srgbRed: 0.85, green: 0.15, blue: 0.15, alpha: 0.85)
-            let errAttrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 10, weight: .regular), .foregroundColor: errColor]
-            (errorText as NSString).draw(at: NSPoint(x: 24, y: 12), withAttributes: errAttrs)
+        func drawInfoRow(y: CGFloat, label: String, value: String, color: NSColor, isError: Bool = false) {
+            let lAttrs: [NSAttributedString.Key: Any] = isError ? [
+                .font: NSFont.systemFont(ofSize: 11.5, weight: .medium),
+                .foregroundColor: errColor
+            ] : labelAttrs
+            (label as NSString).draw(at: NSPoint(x: innerLeft, y: y), withAttributes: lAttrs)
+
+            let vAttrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: 11.5, weight: .medium),
+                .foregroundColor: color,
+                .paragraphStyle: rightPara
+            ]
+            let valRect = NSRect(x: innerLeft + 38, y: y, width: innerWidth - 38, height: 16)
+            (value as NSString).draw(in: valRect, withAttributes: vAttrs)
         }
+
+        // Row 1: 地区与出口 IP
+        let flag = countryFlag.isEmpty ? "🌐" : countryFlag
+        let cName = countryName.isEmpty ? "正在识别..." : countryName
+        let ipPart = exitIP.isEmpty ? "" : " · \(exitIP)"
+        drawInfoRow(y: cardRect.maxY - 64, label: "地区", value: "\(flag) \(cName)\(ipPart)", color: valueColor)
+
+        // Row 2: 节点名称
+        let nodeDisplay = nodeName.isEmpty ? "\(proxyHost):\(proxyPort)" : nodeName
+        drawInfoRow(y: cardRect.maxY - 84, label: "节点", value: nodeDisplay, color: valueColor)
+
+        // Row 3: 端口与频率（断开时显示原因）
+        if !connected && !errorText.isEmpty {
+            drawInfoRow(y: cardRect.maxY - 104, label: "原因", value: errorText, color: errColor, isError: true)
+        } else {
+            drawInfoRow(y: cardRect.maxY - 104, label: "端口", value: "\(proxyPort) · 每 \(checkIntervalSec)s 检测", color: mutedValueColor)
+        }
+
+        // ── Bottom Traffic Dual-Metric Tiles ──
+        let tileGap: CGFloat = 8
+        let tileW: CGFloat = (innerWidth - tileGap) / 2
+        let tileH: CGFloat = 50
+        let tileY: CGFloat = cardRect.minY + 11
+
+        let tileBg = isDark ? NSColor(white: 1.0, alpha: 0.045) : NSColor(white: 0.0, alpha: 0.03)
+        let tileBorder = isDark ? NSColor(white: 1.0, alpha: 0.08) : NSColor(white: 0.0, alpha: 0.06)
+
+        func drawTrafficTile(x: CGFloat, arrow: String, speedText: String, totalText: String, accent: NSColor) {
+            let rect = NSRect(x: x, y: tileY, width: tileW, height: tileH)
+            let path = NSBezierPath(roundedRect: rect, xRadius: 8, yRadius: 8)
+            tileBg.setFill()
+            path.fill()
+            tileBorder.setStroke()
+            path.lineWidth = 0.5
+            path.stroke()
+
+            let arrowAttrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.systemFont(ofSize: 11.5, weight: .bold),
+                .foregroundColor: accent
+            ]
+            let speedAttrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: 12.0, weight: .semibold),
+                .foregroundColor: valueColor
+            ]
+            let combined = NSMutableAttributedString(string: "\(arrow) ", attributes: arrowAttrs)
+            combined.append(NSAttributedString(string: speedText, attributes: speedAttrs))
+            combined.draw(at: NSPoint(x: x + 10, y: tileY + 26))
+
+            let totalAttrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: 10.0, weight: .regular),
+                .foregroundColor: labelColor
+            ]
+            ("累计 \(totalText)" as NSString).draw(at: NSPoint(x: x + 10, y: tileY + 9), withAttributes: totalAttrs)
+        }
+
+        let upColor = isDark ? NSColor(srgbRed: 1.0, green: 0.64, blue: 0.26, alpha: 0.95) : NSColor(srgbRed: 0.88, green: 0.46, blue: 0.04, alpha: 0.95)
+        let dnColor = isDark ? NSColor(srgbRed: 0.36, green: 0.74, blue: 1.0, alpha: 0.95) : NSColor(srgbRed: 0.06, green: 0.48, blue: 0.88, alpha: 0.95)
+
+        drawTrafficTile(
+            x: innerLeft,
+            arrow: "↑",
+            speedText: formatSpeedAdaptive(upSpeed),
+            totalText: formatTotalBytes(upTotal),
+            accent: upColor
+        )
+        drawTrafficTile(
+            x: innerLeft + tileW + tileGap,
+            arrow: "↓",
+            speedText: formatSpeedAdaptive(downSpeed),
+            totalText: formatTotalBytes(downTotal),
+            accent: dnColor
+        )
     }
 
     func update(connected: Bool, latency: Int, error: String, host: String, port: Int, checkTime: String, interval: Int,
@@ -501,6 +546,14 @@ class StatusCardView: NSView {
         self.countryName = countryName
         self.exitIP = exitIP
         self.nodeName = nodeName
+        self.upSpeed = upSpeed
+        self.downSpeed = downSpeed
+        self.upTotal = upTotal
+        self.downTotal = downTotal
+        self.needsDisplay = true
+    }
+
+    func updateTrafficOnly(upSpeed: Int, downSpeed: Int, upTotal: Int64, downTotal: Int64) {
         self.upSpeed = upSpeed
         self.downSpeed = downSpeed
         self.upTotal = upTotal
@@ -575,7 +628,39 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
     var styleMenuItems: [NSMenuItem] = []
     var themeMenuItems: [NSMenuItem] = []
 
+    private let defaults = UserDefaults.standard
+
+    func loadPreferences() {
+        if defaults.object(forKey: "checkInterval") != nil {
+            let saved = defaults.double(forKey: "checkInterval")
+            if [1.0, 2.0, 3.0, 5.0, 10.0].contains(saved) { checkInterval = saved }
+        }
+        if defaults.object(forKey: "currentStyle") != nil,
+           let s = IndicatorStyle(rawValue: defaults.integer(forKey: "currentStyle")) {
+            currentStyle = s
+        }
+        if defaults.object(forKey: "currentTheme") != nil,
+           let t = ColorTheme(rawValue: defaults.integer(forKey: "currentTheme")) {
+            currentTheme = t
+        }
+        if defaults.object(forKey: "soundEnabled") != nil {
+            soundEnabled = defaults.bool(forKey: "soundEnabled")
+        }
+        if defaults.object(forKey: "showFlagInMenuBar") != nil {
+            showFlagInMenuBar = defaults.bool(forKey: "showFlagInMenuBar")
+        }
+        if defaults.object(forKey: "speedFormat") != nil,
+           let f = SpeedFormat(rawValue: defaults.integer(forKey: "speedFormat")) {
+            speedFormat = f
+        }
+        if defaults.object(forKey: "speedMetric") != nil,
+           let m = SpeedMetric(rawValue: defaults.integer(forKey: "speedMetric")) {
+            speedMetric = m
+        }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
+        loadPreferences()
         rebuildIcons()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -600,6 +685,7 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
             self.totalUp = uT
             self.totalDown = dT
             self.updateTrafficDisplay()
+            self.statusCardView?.updateTrafficOnly(upSpeed: up, downSpeed: down, upTotal: uT, downTotal: dT)
         }
         trafficMonitor.start()
 
@@ -634,7 +720,7 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
         let tipUp = formatSpeedAdaptive(currentUpSpeed)
         let tipDn = formatSpeedAdaptive(currentDownSpeed)
         let tipTotal = "↑\(formatTotalBytes(totalUp))  ↓\(formatTotalBytes(totalDown))"
-        button.toolTip = "ProxyGuard · \(flag) \(name)\(ip)\(node)\n实时: ↑\(tipUp)  ↓\(tipDn)\n累计: \(tipTotal)"
+        button.toolTip = "VPN监控 · \(flag) \(name)\(ip)\(node)\n实时: ↑\(tipUp)  ↓\(tipDn)\n累计: \(tipTotal)"
     }
 
     // ── Active Node Fetcher from Mihomo API ──
@@ -791,29 +877,32 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
     // ── Menu Setup ──
     func setupMenu() {
         let menu = NSMenu()
-        menu.minimumWidth = 280
+        menu.minimumWidth = 276
 
         statusCardView = StatusCardView()
         statusCardView.currentTheme = currentTheme
-        statusCardView.frame = NSRect(x: 0, y: 0, width: 280, height: 186)
+        statusCardView.frame = NSRect(x: 0, y: 0, width: 276, height: 190)
         statusCardMenuItem = NSMenuItem()
         statusCardMenuItem.view = statusCardView
         menu.addItem(statusCardMenuItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        menu.addItem(makeMenuItem(title: "立即重新检测", symbol: "arrow.clockwise", action: #selector(checkNowClicked), key: "r"))
-        menu.addItem(makeMenuItem(title: "复制节点与代理信息", symbol: "doc.on.doc", action: #selector(copyProxyClicked)))
+        menu.addItem(makeMenuItem(title: "立即刷新状态", symbol: "arrow.clockwise", action: #selector(checkNowClicked), key: "r"))
+        menu.addItem(makeMenuItem(title: "复制连接信息", symbol: "doc.on.doc", action: #selector(copyProxyClicked)))
 
         menu.addItem(NSMenuItem.separator())
 
-        // Speed format submenu
+        // ── Unified Preferences Submenu (keeps top-level menu ultra-clean) ──
+        let prefsMenu = NSMenu()
+
+        // 1. Speed format submenu
         let speedMenu = NSMenu()
-        let fmtMbs = NSMenuItem(title: "0.00 MB/s (标准 MB/s，推荐)", action: #selector(setSpeedFormatClicked(_:)), keyEquivalent: "")
+        let fmtMbs = NSMenuItem(title: "0.00 MB/s（标准）", action: #selector(setSpeedFormatClicked(_:)), keyEquivalent: "")
         fmtMbs.tag = 0; fmtMbs.target = self; fmtMbs.state = (speedFormat == .mbs) ? .on : .off
-        let fmtMbsC = NSMenuItem(title: "0.00 M/s (紧凑)", action: #selector(setSpeedFormatClicked(_:)), keyEquivalent: "")
+        let fmtMbsC = NSMenuItem(title: "0.00 M/s（紧凑）", action: #selector(setSpeedFormatClicked(_:)), keyEquivalent: "")
         fmtMbsC.tag = 1; fmtMbsC.target = self; fmtMbsC.state = (speedFormat == .mbsCompact) ? .on : .off
-        let fmtAdapt = NSMenuItem(title: "自动单位 (B/s · KB/s · MB/s)", action: #selector(setSpeedFormatClicked(_:)), keyEquivalent: "")
+        let fmtAdapt = NSMenuItem(title: "自动切换单位", action: #selector(setSpeedFormatClicked(_:)), keyEquivalent: "")
         fmtAdapt.tag = 2; fmtAdapt.target = self; fmtAdapt.state = (speedFormat == .adaptive) ? .on : .off
         speedMenu.addItem(fmtMbs)
         speedMenu.addItem(fmtMbsC)
@@ -822,36 +911,24 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
 
         speedMenu.addItem(NSMenuItem.separator())
 
-        let metTotal = NSMenuItem(title: "统计: 总速率 (上传 + 下载)", action: #selector(setSpeedMetricClicked(_:)), keyEquivalent: "")
+        let metTotal = NSMenuItem(title: "显示总速率（上传 + 下载）", action: #selector(setSpeedMetricClicked(_:)), keyEquivalent: "")
         metTotal.tag = 0; metTotal.target = self; metTotal.state = (speedMetric == .total) ? .on : .off
-        let metDown = NSMenuItem(title: "统计: 仅下载速率", action: #selector(setSpeedMetricClicked(_:)), keyEquivalent: "")
+        let metDown = NSMenuItem(title: "仅显示下载速率", action: #selector(setSpeedMetricClicked(_:)), keyEquivalent: "")
         metDown.tag = 1; metDown.target = self; metDown.state = (speedMetric == .download) ? .on : .off
         speedMenu.addItem(metTotal)
         speedMenu.addItem(metDown)
         speedMetricMenuItems = [metTotal, metDown]
 
-        let speedParent = makeMenuItem(title: "速率显示设置", symbol: "gauge.with.dots.needle.bottom.50percent", action: nil)
+        let speedParent = makeMenuItem(title: "网速显示格式", symbol: "gauge.with.dots.needle.bottom.50percent", action: nil)
         speedParent.submenu = speedMenu
-        menu.addItem(speedParent)
+        prefsMenu.addItem(speedParent)
 
-        // Show Flag in Menu Bar toggle
-        showFlagMenuItem = makeMenuItem(title: "在顶部显示国家旗帜", symbol: "flag", action: #selector(toggleShowFlagClicked))
+        // 2. Show Flag in Menu Bar toggle
+        showFlagMenuItem = makeMenuItem(title: "顶部显示国家旗帜", symbol: "flag", action: #selector(toggleShowFlagClicked))
         showFlagMenuItem.state = showFlagInMenuBar ? .on : .off
-        menu.addItem(showFlagMenuItem)
+        prefsMenu.addItem(showFlagMenuItem)
 
-        // Interval submenu
-        let intervalMenu = NSMenu()
-        for sec in [1, 2, 3, 5, 10] {
-            let label = sec == 1 ? "1 秒  (极速实时，推荐)" : "\(sec) 秒"
-            let item = NSMenuItem(title: label, action: #selector(setIntervalClicked(_:)), keyEquivalent: "")
-            item.tag = sec; item.target = self; item.state = (sec == 1) ? .on : .off
-            intervalMenu.addItem(item)
-        }
-        let intParent = makeMenuItem(title: "检测频率", symbol: "timer", action: nil)
-        intParent.submenu = intervalMenu
-        menu.addItem(intParent)
-
-        // Indicator Style submenu
+        // 3. Indicator Style submenu
         let styleMenu = NSMenu()
         for (i, name) in ["🔮  霓虹晶体呼吸灯", "💊  灵动高科技胶囊", "🎯  精密极客光环", "💎  微光珠宝圆点"].enumerated() {
             let item = NSMenuItem(title: name, action: #selector(setStyleClicked(_:)), keyEquivalent: "")
@@ -859,11 +936,11 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
             styleMenu.addItem(item)
             styleMenuItems.append(item)
         }
-        let styleParent = makeMenuItem(title: "指示灯图形样式", symbol: "paintpalette", action: nil)
+        let styleParent = makeMenuItem(title: "指示灯样式", symbol: "paintpalette", action: nil)
         styleParent.submenu = styleMenu
-        menu.addItem(styleParent)
+        prefsMenu.addItem(styleParent)
 
-        // Color Theme submenu
+        // 4. Color Theme submenu
         let themeMenu = NSMenu()
         for (i, theme) in ColorTheme.allCases.enumerated() {
             let item = NSMenuItem(title: theme.name, action: #selector(setThemeClicked(_:)), keyEquivalent: "")
@@ -871,21 +948,41 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
             themeMenu.addItem(item)
             themeMenuItems.append(item)
         }
-        let themeParent = makeMenuItem(title: "状态指示灯配色", symbol: "swatchpalette", action: nil)
+        let themeParent = makeMenuItem(title: "指示灯配色", symbol: "swatchpalette", action: nil)
         themeParent.submenu = themeMenu
-        menu.addItem(themeParent)
+        prefsMenu.addItem(themeParent)
 
+        prefsMenu.addItem(NSMenuItem.separator())
+
+        // 5. Interval submenu
+        let intervalMenu = NSMenu()
+        for sec in [1, 2, 3, 5, 10] {
+            let label = sec == 1 ? "每 1 秒（实时）" : "每 \(sec) 秒"
+            let item = NSMenuItem(title: label, action: #selector(setIntervalClicked(_:)), keyEquivalent: "")
+            item.tag = sec; item.target = self; item.state = (Int(checkInterval) == sec) ? .on : .off
+            intervalMenu.addItem(item)
+        }
+        let intParent = makeMenuItem(title: "检测频率", symbol: "timer", action: nil)
+        intParent.submenu = intervalMenu
+        prefsMenu.addItem(intParent)
+
+        // 6. Sound Alert
         soundMenuItem = makeMenuItem(title: "断开声音提示", symbol: "speaker.wave.2", action: #selector(toggleSoundClicked))
         soundMenuItem.state = soundEnabled ? .on : .off
-        menu.addItem(soundMenuItem)
+        prefsMenu.addItem(soundMenuItem)
+
+        // 7. Auto Launch
+        autoLaunchMenuItem = makeMenuItem(title: "开机自动启动", symbol: "play.circle", action: #selector(toggleAutoLaunch))
+        updateAutoLaunchState()
+        prefsMenu.addItem(autoLaunchMenuItem)
+
+        let prefsParent = makeMenuItem(title: "偏好设置", symbol: "slider.horizontal.3", action: nil)
+        prefsParent.submenu = prefsMenu
+        menu.addItem(prefsParent)
 
         menu.addItem(NSMenuItem.separator())
 
-        autoLaunchMenuItem = makeMenuItem(title: "开机自动启动", symbol: "play.circle", action: #selector(toggleAutoLaunch))
-        updateAutoLaunchState()
-        menu.addItem(autoLaunchMenuItem)
-
-        menu.addItem(makeMenuItem(title: "退出 ProxyGuard", symbol: "xmark.circle", action: #selector(quitClicked), key: "q"))
+        menu.addItem(makeMenuItem(title: "退出 VPN监控", symbol: "power", action: #selector(quitClicked), key: "q"))
 
         statusItem.menu = menu
     }
@@ -908,6 +1005,7 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
 
     @objc func toggleShowFlagClicked() {
         showFlagInMenuBar.toggle()
+        defaults.set(showFlagInMenuBar, forKey: "showFlagInMenuBar")
         showFlagMenuItem.state = showFlagInMenuBar ? .on : .off
         updateTrafficDisplay()
     }
@@ -915,6 +1013,7 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
     @objc func setSpeedFormatClicked(_ sender: NSMenuItem) {
         if let fmt = SpeedFormat(rawValue: sender.tag) {
             speedFormat = fmt
+            defaults.set(fmt.rawValue, forKey: "speedFormat")
             for item in speedFormatMenuItems {
                 item.state = (item.tag == sender.tag) ? .on : .off
             }
@@ -925,6 +1024,7 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
     @objc func setSpeedMetricClicked(_ sender: NSMenuItem) {
         if let met = SpeedMetric(rawValue: sender.tag) {
             speedMetric = met
+            defaults.set(met.rawValue, forKey: "speedMetric")
             for item in speedMetricMenuItems {
                 item.state = (item.tag == sender.tag) ? .on : .off
             }
@@ -934,13 +1034,16 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
 
     @objc func setIntervalClicked(_ sender: NSMenuItem) {
         checkInterval = TimeInterval(sender.tag)
+        defaults.set(checkInterval, forKey: "checkInterval")
         if let p = sender.menu { for i in p.items { i.state = (i == sender) ? .on : .off } }
         scheduleTimer(); checkProxy(isRetry: false)
     }
 
     @objc func setStyleClicked(_ sender: NSMenuItem) {
         if let s = IndicatorStyle(rawValue: sender.tag) {
-            currentStyle = s; rebuildIcons()
+            currentStyle = s
+            defaults.set(s.rawValue, forKey: "currentStyle")
+            rebuildIcons()
             if let button = statusItem.button { button.image = isConnected ? greenImage : redImageBright }
             if !isConnected { startPulse() }
             if let p = sender.menu { for i in p.items { i.state = (i == sender) ? .on : .off } }
@@ -950,6 +1053,7 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
     @objc func setThemeClicked(_ sender: NSMenuItem) {
         if let t = ColorTheme(rawValue: sender.tag) {
             currentTheme = t
+            defaults.set(t.rawValue, forKey: "currentTheme")
             statusCardView.currentTheme = t
             rebuildIcons()
             if let button = statusItem.button {
@@ -965,7 +1069,11 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
         }
     }
 
-    @objc func toggleSoundClicked() { soundEnabled.toggle(); soundMenuItem.state = soundEnabled ? .on : .off }
+    @objc func toggleSoundClicked() {
+        soundEnabled.toggle()
+        defaults.set(soundEnabled, forKey: "soundEnabled")
+        soundMenuItem.state = soundEnabled ? .on : .off
+    }
 
     @objc func copyProxyClicked() {
         let p = getSystemProxy()
@@ -996,7 +1104,7 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
         if isAutoLaunchEnabled() {
             try? FileManager.default.removeItem(atPath: plistPath)
         } else {
-            let exec = Bundle.main.executablePath ?? "/Applications/ProxyGuard.app/Contents/MacOS/ProxyGuard"
+            let exec = Bundle.main.executablePath ?? "/Applications/VPN监控.app/Contents/MacOS/ProxyGuard"
             let plist = """
             <?xml version="1.0" encoding="UTF-8"?>
             <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -1006,6 +1114,8 @@ class ProxyMonitorApp: NSObject, NSApplicationDelegate {
                 <key>RunAtLoad</key><true/><key>KeepAlive</key><false/>
             </dict></plist>
             """
+            let dir = (plistPath as NSString).deletingLastPathComponent
+            try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
             try? plist.write(toFile: plistPath, atomically: true, encoding: .utf8)
         }
         updateAutoLaunchState()
